@@ -1,0 +1,25 @@
+---
+# Source: gitlab/charts/gitlab/charts/gitlab-exporter/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: RELEASE-NAME-gitlab-exporter
+  namespace: default
+  labels:
+    app: gitlab-exporter
+    chart: gitlab-exporter-4.0.1
+    release: RELEASE-NAME
+    heritage: Helm
+    
+  annotations:
+    
+spec:
+  type: ClusterIP
+  ports:
+    - port: 9168
+      targetPort: 9168
+      protocol: TCP
+      name: gitlab-exporter
+  selector:
+    app: gitlab-exporter
+    release: RELEASE-NAME

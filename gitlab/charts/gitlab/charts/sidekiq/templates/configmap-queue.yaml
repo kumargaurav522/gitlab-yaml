@@ -1,0 +1,23 @@
+---
+# Source: gitlab/charts/gitlab/charts/sidekiq/templates/configmap-queue.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: RELEASE-NAME-sidekiq-all-in-1
+  namespace: default
+  labels:
+    app: sidekiq
+    chart: sidekiq-4.0.1
+    release: RELEASE-NAME
+    heritage: Helm
+    
+    queue_pod_name: all-in-1
+data:
+  sidekiq_queues.yml.erb: |
+    <%=
+       # this works because codebase default content has only `:
+       sq = YAML.load_file('/srv/gitlab/config/sidekiq_queues.yml')
+       
+       sq.to_yaml
+    %>
+# Leave this here - This line denotes end of block to the parser.

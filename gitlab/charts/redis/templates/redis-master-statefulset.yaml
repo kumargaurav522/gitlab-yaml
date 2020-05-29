@@ -1,0 +1,162 @@
+---
+# Source: gitlab/charts/redis/templates/redis-master-statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: RELEASE-NAME-redis-master
+  labels:
+    app: redis
+    chart: redis-10.3.4
+    release: RELEASE-NAME
+    heritage: Helm
+spec:
+  selector:
+    matchLabels:
+      app: redis
+      release: RELEASE-NAME
+      role: master
+  serviceName: RELEASE-NAME-redis-headless
+  template:
+    metadata:
+      labels:
+        app: redis
+        chart: redis-10.3.4
+        release: RELEASE-NAME
+        role: master
+      annotations:
+        checksum/health: 11047489f6da7f8e6864044f02707fae187395459d0da7a5aa2e60d963fb5257
+        checksum/configmap: 6cbb22fc05d83368c731ba34c15b16adb526504be27b6624e796e7c4a6230460
+        checksum/secret: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        prometheus.io/port: "9121"
+        prometheus.io/scrape: "true"
+    spec:      
+      securityContext:
+        fsGroup: 1001
+      serviceAccountName: "default"
+      containers:
+      - name: RELEASE-NAME-redis
+        image: "docker.io/bitnami/redis:5.0.7-debian-9-r50"
+        imagePullPolicy: "IfNotPresent"
+        securityContext:
+          runAsUser: 1001
+        command:
+        - /bin/bash
+        - -c
+        - |
+          if [[ -n $REDIS_PASSWORD_FILE ]]; then
+            password_aux=`cat ${REDIS_PASSWORD_FILE}`
+            export REDIS_PASSWORD=$password_aux
+          fi
+          if [[ ! -f /opt/bitnami/redis/etc/master.conf ]];then
+            cp /opt/bitnami/redis/mounted-etc/master.conf /opt/bitnami/redis/etc/master.conf
+          fi
+          if [[ ! -f /opt/bitnami/redis/etc/redis.conf ]];then
+            cp /opt/bitnami/redis/mounted-etc/redis.conf /opt/bitnami/redis/etc/redis.conf
+          fi
+          ARGS=("--port" "${REDIS_PORT}")
+          ARGS+=("--requirepass" "${REDIS_PASSWORD}")
+          ARGS+=("--masterauth" "${REDIS_PASSWORD}")
+          ARGS+=("--include" "/opt/bitnami/redis/etc/redis.conf")
+          ARGS+=("--include" "/opt/bitnami/redis/etc/master.conf")
+          /run.sh ${ARGS[@]}
+        env:
+        - name: REDIS_REPLICATION_MODE
+          value: master
+        - name: REDIS_PASSWORD_FILE
+          value: "/opt/bitnami/redis/secrets/redis-password"
+        - name: REDIS_PORT
+          value: "6379"
+        ports:
+        - name: redis
+          containerPort: 6379
+        livenessProbe:
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command:
+            - sh
+            - -c
+            - /health/ping_liveness_local.sh 5
+        readinessProbe:
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 1
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command:
+            - sh
+            - -c
+            - /health/ping_readiness_local.sh 5
+        resources:
+          null
+        volumeMounts:
+        - name: health
+          mountPath: /health
+        - name: redis-password
+          mountPath: /opt/bitnami/redis/secrets/
+        - name: redis-data
+          mountPath: /data
+          subPath: 
+        - name: config
+          mountPath: /opt/bitnami/redis/mounted-etc
+        - name: redis-tmp-conf
+          mountPath: /opt/bitnami/redis/etc/
+      - name: metrics
+        image: docker.io/bitnami/redis-exporter:1.3.5-debian-9-r23
+        imagePullPolicy: "IfNotPresent"
+        command:
+        - /bin/bash
+        - -c
+        - |
+          if [[ -f '/secrets/redis-password' ]]; then
+           export REDIS_PASSWORD=$(cat /secrets/redis-password)
+          fi
+          redis_exporter
+        env:
+        - name: REDIS_ALIAS
+          value: RELEASE-NAME-redis
+        volumeMounts:
+        - name: redis-password
+          mountPath: /secrets/
+        ports:
+        - name: metrics
+          containerPort: 9121
+        resources:
+          null
+      volumes:
+      - name: health
+        configMap:
+          name: RELEASE-NAME-redis-health
+          defaultMode: 0755
+      - name: redis-password
+        secret:
+          secretName: "RELEASE-NAME-redis-secret"
+          items:
+          - key: "secret"
+            path: redis-password
+      - name: config
+        configMap:
+          name: RELEASE-NAME-redis
+      - name: redis-tmp-conf
+        emptyDir: {}
+  volumeClaimTemplates:
+    - metadata:
+        name: redis-data
+        labels:
+          app: redis
+          release: RELEASE-NAME
+          heritage: Helm
+          component: master
+      spec:
+        accessModes:
+          - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: "8Gi"
+        
+  updateStrategy:
+    type: RollingUpdate

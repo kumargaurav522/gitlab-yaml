@@ -1,0 +1,17 @@
+---
+# Source: gitlab/templates/initdb-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: RELEASE-NAME-postgresql-init-db
+  namespace: default
+  labels:
+    app: gitlab
+    chart: gitlab-4.0.1
+    release: RELEASE-NAME
+    heritage: Helm
+    
+data:
+  enable_extensions.sh: |
+    PGPASS=$(cat ${POSTGRES_POSTGRES_PASSWORD_FILE}) psql -d gitlabhq_production -U postgres -c 'CREATE EXTENSION pg_trgm;'
+# Leave this here - This line denotes end of block to the parser.

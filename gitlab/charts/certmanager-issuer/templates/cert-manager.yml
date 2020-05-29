@@ -1,0 +1,56 @@
+---
+# Source: gitlab/charts/certmanager-issuer/templates/cert-manager.yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: RELEASE-NAME-certmanager-issuer-certmanager
+  namespace: default
+  labels:
+    app: certmanager-issuer
+    chart: certmanager-issuer-0.1.0
+    release: RELEASE-NAME
+    heritage: Helm
+    
+data:
+  create-issuer: |
+    #!/bin/bash
+    set -e ;
+    
+    issuer_file=$1
+    namespace=default
+    
+    echo "Creating the certmanager issuer..."
+    set +e ; # The CRD may not exist yet. We need to retry until this passes
+    while ! kubectl --namespace=$namespace apply -f ${issuer_file:=issuer.yml}; do
+      sleep 1;
+    done ;
+    set -e ; # reset `e` as active
+    
+  issuer.yml: |
+    
+    apiVersion: certmanager.k8s.io/v1alpha1
+    kind: Issuer
+    metadata:
+      name: RELEASE-NAME-issuer
+      namespace: default
+      labels:
+        app: certmanager-issuer
+        chart: certmanager-issuer-0.1.0
+        release: RELEASE-NAME
+        heritage: Helm
+        
+    spec:
+      acme:
+        # The ACME server URL
+        server: "https://acme-v02.api.letsencrypt.org/directory"
+        # Email address used for ACME registration
+        email: "kumargaurav522@gmail.com"
+        # Name of a secret used to store the ACME account private key
+        privateKeySecretRef:
+          name: RELEASE-NAME-acme-key
+        # Enable the HTTP-01 challenge provider
+        solvers:
+        - selector: {}
+          http01:
+            ingress:
+              class: RELEASE-NAME-nginx

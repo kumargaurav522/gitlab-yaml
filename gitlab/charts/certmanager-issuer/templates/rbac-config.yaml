@@ -1,0 +1,46 @@
+---
+# Source: gitlab/charts/certmanager-issuer/templates/rbac-config.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: RELEASE-NAME-certmanager-issuer
+  namespace: default
+  labels:
+    app: certmanager-issuer
+    chart: certmanager-issuer-0.1.0
+    release: RELEASE-NAME
+    heritage: Helm
+    
+  annotations:
+    namespace: default
+---
+# Source: gitlab/charts/certmanager-issuer/templates/rbac-config.yaml
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: RELEASE-NAME-certmanager-issuer
+  namespace: default
+rules:
+- apiGroups: ["certmanager.k8s.io"]
+  resources: ["issuers"]
+  verbs: ["get", "list", "update", "create", "patch"]
+---
+# Source: gitlab/charts/certmanager-issuer/templates/rbac-config.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: RELEASE-NAME-certmanager-issuer
+  namespace: default
+  labels:
+    app: certmanager-issuer
+    chart: certmanager-issuer-0.1.0
+    release: RELEASE-NAME
+    heritage: Helm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: RELEASE-NAME-certmanager-issuer
+subjects:
+  - kind: ServiceAccount
+    name: RELEASE-NAME-certmanager-issuer
+    namespace: default

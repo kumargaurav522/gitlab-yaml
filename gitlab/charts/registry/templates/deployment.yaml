@@ -1,0 +1,128 @@
+---
+# Source: gitlab/charts/registry/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: RELEASE-NAME-registry
+  namespace: default
+  labels:
+    app: registry
+    chart: registry-0.5.0
+    release: RELEASE-NAME
+    heritage: Helm
+    
+  annotations:
+    
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: registry
+      release: RELEASE-NAME
+  template:
+    metadata:
+      labels:
+        app: registry
+        release: RELEASE-NAME
+      annotations:
+        checksum/configmap: b550c6774c18715d915745a950c5495092048bd316dd309fe57e69487553284f
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+    spec:
+      securityContext:
+        runAsUser: 1000
+        fsGroup: 1000
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            podAffinityTerm:
+              topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  app: registry
+                  release: RELEASE-NAME
+      initContainers:
+        
+        - name: certificates
+          image: "registry.gitlab.com/gitlab-org/build/cng/alpine-certificates:20171114-r3"
+          imagePullPolicy: "IfNotPresent"
+          volumeMounts:
+          - name: etc-ssl-certs
+            mountPath: /etc/ssl/certs
+            readOnly: false
+          resources:
+            requests:
+              cpu: 50m
+        - name: configure
+          image: "busybox:latest"
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "/config/configure"]
+          volumeMounts:
+            - name: registry-secrets
+              mountPath: /config
+            - name: registry-server-config
+              mountPath: /registry
+          resources:
+            requests:
+              cpu: 50m      
+      containers:
+        - name: registry
+          image: "registry.gitlab.com/gitlab-org/build/cng/gitlab-container-registry:v2.9.1-gitlab"
+          imagePullPolicy: "IfNotPresent"
+          volumeMounts:
+          - name: registry-server-config
+            mountPath: /etc/docker/registry/
+            readOnly: true
+          - name: etc-ssl-certs
+            mountPath: /etc/ssl/certs/
+            readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /debug/health
+              port: 5001
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /debug/health
+              port: 5001
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: registry-server-config
+        emptyDir:
+          medium: "Memory"
+      - name: registry-secrets
+        projected:
+          sources:
+          - configMap:
+              name: RELEASE-NAME-registry
+          - secret:
+              name: "RELEASE-NAME-registry-secret"
+              items:
+                  - key: registry-auth.crt
+                    path: certificate.crt
+          - secret:
+              name: "RELEASE-NAME-registry-httpsecret"
+              items:
+                - key: "secret"
+                  path: httpSecret
+          - secret:
+              name: "RELEASE-NAME-minio-secret"
+      
+      - name: etc-ssl-certs
+        emptyDir:
+          medium: "Memory"

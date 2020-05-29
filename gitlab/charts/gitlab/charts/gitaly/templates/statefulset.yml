@@ -1,0 +1,165 @@
+---
+# Source: gitlab/charts/gitlab/charts/gitaly/templates/statefulset.yml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: RELEASE-NAME-gitaly
+  namespace: default
+  labels:
+    app: gitaly
+    chart: gitaly
+    release: RELEASE-NAME
+    heritage: Helm
+    
+spec:
+  selector:
+    matchLabels:
+      app: gitaly
+      release: RELEASE-NAME
+  serviceName: RELEASE-NAME-gitaly
+  replicas:  1
+  podManagementPolicy: Parallel
+  template:
+    metadata:
+      labels:
+        app: gitaly
+        release: RELEASE-NAME
+      annotations:
+        checksum/config: 840968b9ff1432baf86f09179d205ec2976b7b80c698b763def700391fb02e68
+    spec:
+      terminationGracePeriodSeconds: 30
+      initContainers:
+        
+        
+        - name: certificates
+          image: "registry.gitlab.com/gitlab-org/build/cng/alpine-certificates:20171114-r3"
+          
+          volumeMounts:
+          - name: etc-ssl-certs
+            mountPath: /etc/ssl/certs
+            readOnly: false
+          resources:
+            requests:
+              cpu: 50m
+        - name: configure
+          command: ['sh', '/config/configure']
+          image: "busybox:latest"
+          volumeMounts:
+          
+          - name: gitaly-config
+            mountPath: /config
+            readOnly: true
+          - name: init-gitaly-secrets
+            mountPath: /init-config
+            readOnly: true
+          - name: gitaly-secrets
+            mountPath: /init-secrets
+            readOnly: false
+          resources:
+            requests:
+              cpu: 50m
+      securityContext:
+        runAsUser: 1000
+        fsGroup: 1000      
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            podAffinityTerm:
+              topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  app: gitaly
+                  release: RELEASE-NAME
+      containers:
+        
+        - name: gitaly
+          image: "registry.gitlab.com/gitlab-org/build/cng/gitaly:v13.0.1"
+          
+          ports:
+            - containerPort: 8075
+            - containerPort: 9236
+          env:
+            - name: CONFIG_TEMPLATE_DIRECTORY
+              value: '/etc/gitaly/templates'
+            - name: CONFIG_DIRECTORY
+              value: '/etc/gitaly'
+            - name: GITALY_CONFIG_FILE
+              value: '/etc/gitaly/config.toml'
+            - name: SSL_CERT_DIR
+              value: '/etc/ssl/certs'
+            - name: GITALY_PROMETHEUS_LISTEN_ADDR
+              value: ':9236'
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          volumeMounts:
+            
+            - name: etc-ssl-certs
+              mountPath: /etc/ssl/certs/
+              readOnly: true
+            - name: gitaly-config
+              mountPath: '/etc/gitaly/templates'
+            - name: gitaly-secrets
+              mountPath: '/etc/gitlab-secrets'
+              readOnly: true
+            - name: repo-data
+              mountPath: '/home/git/repositories'
+          livenessProbe:
+            exec:
+              command:
+              - /scripts/healthcheck
+            initialDelaySeconds: 30
+            timeoutSeconds: 3
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+              - /scripts/healthcheck
+            initialDelaySeconds: 10
+            timeoutSeconds: 3
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 200Mi
+      volumes:
+      
+      - name: gitaly-config
+        configMap:
+          name: RELEASE-NAME-gitaly
+      - name: gitaly-secrets
+        emptyDir:
+          medium: "Memory"
+      - name: init-gitaly-secrets
+        projected:
+          defaultMode: 0440
+          sources:
+          - secret:
+              name: "RELEASE-NAME-gitaly-secret"
+              items:
+                - key: "token"
+                  path: "gitaly_token"
+          - secret:
+              name: "RELEASE-NAME-gitlab-shell-secret"
+              items:
+                - key: "secret"
+                  path: ".gitlab_shell_secret"
+      
+      - name: etc-ssl-certs
+        emptyDir:
+          medium: "Memory"
+  volumeClaimTemplates:
+    - metadata:
+        name: repo-data
+        labels:
+          app: gitaly
+          release: RELEASE-NAME
+      spec:
+        accessModes:
+          - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: "50Gi"
+        selector:

@@ -1,0 +1,252 @@
+---
+# Source: gitlab/charts/gitlab-runner/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: RELEASE-NAME-gitlab-runner
+  labels:
+    app: RELEASE-NAME-gitlab-runner
+    chart: gitlab-runner-0.17.0
+    release: "RELEASE-NAME"
+    heritage: "Helm"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: RELEASE-NAME-gitlab-runner
+  template:
+    metadata:
+      labels:
+        app: RELEASE-NAME-gitlab-runner
+        chart: gitlab-runner-0.17.0
+        release: "RELEASE-NAME"
+        heritage: "Helm"
+      annotations:
+        checksum/configmap: 949bade1701becc108c23b6202a21817d1b4b66edf942efa514e0e829cff64e0
+        checksum/secrets: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9252'
+    spec:
+      securityContext:
+        runAsUser: 100
+        fsGroup: 65533
+      terminationGracePeriodSeconds: 3600
+      initContainers:
+      - name: configure
+        command: ['sh', '/config/configure']
+        image: gitlab/gitlab-runner:alpine-v13.0.0
+        imagePullPolicy: "IfNotPresent"
+        env:
+                
+        - name: CI_SERVER_URL
+          value: https://gitlab.example.com
+        - name: CLONE_URL
+          value: ""
+        - name: RUNNER_REQUEST_CONCURRENCY
+          value: "1"
+        - name: RUNNER_EXECUTOR
+          value: "kubernetes"
+        - name: REGISTER_LOCKED
+          value: "false"
+        - name: RUNNER_TAG_LIST
+          value: ""
+        - name: RUNNER_OUTPUT_LIMIT
+          value: "4096"
+        - name: KUBERNETES_IMAGE
+          value: "ubuntu:16.04"
+        
+        - name: KUBERNETES_NAMESPACE
+          value: "default"
+        - name: KUBERNETES_POLL_TIMEOUT
+          value: "180"
+        - name: KUBERNETES_CPU_LIMIT
+          value: ""
+        - name: KUBERNETES_CPU_LIMIT_OVERWRITE_MAX_ALLOWED
+          value: ""
+        - name: KUBERNETES_MEMORY_LIMIT
+          value: ""
+        - name: KUBERNETES_MEMORY_LIMIT_OVERWRITE_MAX_ALLOWED
+          value: ""
+        - name: KUBERNETES_CPU_REQUEST
+          value: ""
+        - name: KUBERNETES_CPU_REQUEST_OVERWRITE_MAX_ALLOWED
+          value: ""
+        - name: KUBERNETES_MEMORY_REQUEST
+          value: ""
+        - name: KUBERNETES_MEMORY_REQUEST_OVERWRITE_MAX_ALLOWED
+          value: ""
+        - name: KUBERNETES_SERVICE_ACCOUNT
+          value: ""
+        - name: KUBERNETES_SERVICE_CPU_LIMIT
+          value: ""
+        - name: KUBERNETES_SERVICE_MEMORY_LIMIT
+          value: ""
+        - name: KUBERNETES_SERVICE_CPU_REQUEST
+          value: ""
+        - name: KUBERNETES_SERVICE_MEMORY_REQUEST
+          value: ""
+        - name: KUBERNETES_HELPER_CPU_LIMIT
+          value: ""
+        - name: KUBERNETES_HELPER_MEMORY_LIMIT
+          value: ""
+        - name: KUBERNETES_HELPER_CPU_REQUEST
+          value: ""
+        - name: KUBERNETES_HELPER_MEMORY_REQUEST
+          value: ""
+        - name: KUBERNETES_HELPER_IMAGE
+          value: ""
+        - name: KUBERNETES_PULL_POLICY
+          value: ""
+        - name: CACHE_TYPE
+          value: "s3"
+        - name: CACHE_PATH
+          value: "gitlab-runner"
+        - name: CACHE_SHARED
+          value: "true"
+        - name: CACHE_S3_SERVER_ADDRESS
+          value: "minio.example.com"
+        - name: CACHE_S3_BUCKET_NAME
+          value: "runner-cache"
+        - name: CACHE_S3_BUCKET_LOCATION
+          value: "us-east-1"
+        volumeMounts:
+        - name: runner-secrets
+          mountPath: /secrets
+          readOnly: false
+        - name: scripts
+          mountPath: /config
+          readOnly: true
+        - name: init-runner-secrets
+          mountPath: /init-secrets
+          readOnly: true
+        resources:
+          {}
+      serviceAccountName: RELEASE-NAME-gitlab-runner
+      containers:
+      - name: RELEASE-NAME-gitlab-runner
+        image: gitlab/gitlab-runner:alpine-v13.0.0
+        imagePullPolicy: "IfNotPresent"
+        command: ["/bin/bash", "/scripts/entrypoint"]
+        env:
+                
+        - name: CI_SERVER_URL
+          value: https://gitlab.example.com
+        - name: CLONE_URL
+          value: ""
+        - name: RUNNER_REQUEST_CONCURRENCY
+          value: "1"
+        - name: RUNNER_EXECUTOR
+          value: "kubernetes"
+        - name: REGISTER_LOCKED
+          value: "false"
+        - name: RUNNER_TAG_LIST
+          value: ""
+        - name: RUNNER_OUTPUT_LIMIT
+          value: "4096"
+        - name: KUBERNETES_IMAGE
+          value: "ubuntu:16.04"
+        
+        - name: KUBERNETES_NAMESPACE
+          value: "default"
+        - name: KUBERNETES_POLL_TIMEOUT
+          value: "180"
+        - name: KUBERNETES_CPU_LIMIT
+          value: ""
+        - name: KUBERNETES_CPU_LIMIT_OVERWRITE_MAX_ALLOWED
+          value: ""
+        - name: KUBERNETES_MEMORY_LIMIT
+          value: ""
+        - name: KUBERNETES_MEMORY_LIMIT_OVERWRITE_MAX_ALLOWED
+          value: ""
+        - name: KUBERNETES_CPU_REQUEST
+          value: ""
+        - name: KUBERNETES_CPU_REQUEST_OVERWRITE_MAX_ALLOWED
+          value: ""
+        - name: KUBERNETES_MEMORY_REQUEST
+          value: ""
+        - name: KUBERNETES_MEMORY_REQUEST_OVERWRITE_MAX_ALLOWED
+          value: ""
+        - name: KUBERNETES_SERVICE_ACCOUNT
+          value: ""
+        - name: KUBERNETES_SERVICE_CPU_LIMIT
+          value: ""
+        - name: KUBERNETES_SERVICE_MEMORY_LIMIT
+          value: ""
+        - name: KUBERNETES_SERVICE_CPU_REQUEST
+          value: ""
+        - name: KUBERNETES_SERVICE_MEMORY_REQUEST
+          value: ""
+        - name: KUBERNETES_HELPER_CPU_LIMIT
+          value: ""
+        - name: KUBERNETES_HELPER_MEMORY_LIMIT
+          value: ""
+        - name: KUBERNETES_HELPER_CPU_REQUEST
+          value: ""
+        - name: KUBERNETES_HELPER_MEMORY_REQUEST
+          value: ""
+        - name: KUBERNETES_HELPER_IMAGE
+          value: ""
+        - name: KUBERNETES_PULL_POLICY
+          value: ""
+        - name: CACHE_TYPE
+          value: "s3"
+        - name: CACHE_PATH
+          value: "gitlab-runner"
+        - name: CACHE_SHARED
+          value: "true"
+        - name: CACHE_S3_SERVER_ADDRESS
+          value: "minio.example.com"
+        - name: CACHE_S3_BUCKET_NAME
+          value: "runner-cache"
+        - name: CACHE_S3_BUCKET_LOCATION
+          value: "us-east-1"
+        livenessProbe:
+          exec:
+            command: ["/bin/bash", "/scripts/check-live"]
+          initialDelaySeconds: 60
+          timeoutSeconds: 1
+          periodSeconds: 10
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command: ["/usr/bin/pgrep","gitlab.*runner"]
+          initialDelaySeconds: 10
+          timeoutSeconds: 1
+          periodSeconds: 10
+          successThreshold: 1
+          failureThreshold: 3
+        ports:
+        - name: metrics
+          containerPort: 9252
+        volumeMounts:
+        - name: runner-secrets
+          mountPath: /secrets
+        - name: etc-gitlab-runner
+          mountPath: /home/gitlab-runner/.gitlab-runner
+        - name: scripts
+          mountPath: /scripts
+        resources:
+          {}
+      volumes:
+      - name: runner-secrets
+        emptyDir:
+          medium: "Memory"
+      - name: etc-gitlab-runner
+        emptyDir:
+          medium: "Memory"
+      - name: init-runner-secrets
+        projected:
+          sources:
+            - secret:
+                name: "RELEASE-NAME-minio-secret"
+            - secret:
+                name: "RELEASE-NAME-gitlab-runner-secret"
+                items:
+                  - key: runner-registration-token
+                    path: runner-registration-token
+                  - key: runner-token
+                    path: runner-token
+      - name: scripts
+        configMap:
+          name: RELEASE-NAME-gitlab-runner

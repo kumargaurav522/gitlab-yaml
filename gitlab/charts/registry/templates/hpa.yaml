@@ -1,0 +1,25 @@
+---
+# Source: gitlab/charts/registry/templates/hpa.yaml
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: RELEASE-NAME-registry
+  namespace: default
+  labels:
+    app: registry
+    chart: registry-0.5.0
+    release: RELEASE-NAME
+    heritage: Helm
+    
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: RELEASE-NAME-registry
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        targetAverageUtilization: 75

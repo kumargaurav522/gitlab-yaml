@@ -1,0 +1,76 @@
+---
+# Source: gitlab/charts/gitlab/charts/migrations/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: RELEASE-NAME-migrations
+  namespace: default
+  labels:
+    app: migrations
+    chart: migrations-4.0.1
+    release: RELEASE-NAME
+    heritage: Helm
+    
+data:
+  database.yml.erb: |
+    production:
+      adapter: postgresql
+      encoding: unicode
+      database: gitlabhq_production
+      username: gitlab
+      password: "<%= File.read("/etc/gitlab/postgres/psql-password").strip.dump[1..-2] %>"
+      host: "RELEASE-NAME-postgresql"
+      port: 5432
+      pool: 10
+      prepared_statements: false
+      # load_balancing:
+      #   hosts:
+      #     - host1.example.com
+      #     - host2.example.com      
+  resque.yml.erb: |
+    production:
+      url: redis://:<%= URI.escape(File.read("/etc/gitlab/redis/redis-password").strip) %>@RELEASE-NAME-redis-master:6379
+      
+      id:
+  
+  
+  
+  cable.yml.erb: |
+    production:
+      url: redis://:<%= URI.escape(File.read("/etc/gitlab/redis/redis-password").strip) %>@RELEASE-NAME-redis-master:6379
+      
+      id:
+      adapter: redis
+  gitlab.yml.erb: |
+    production: &base
+      gitlab:
+        host: gitlab.example.com
+      gitaly:
+        client_path: /home/git/gitaly/bin
+        token: "<%= File.read('/etc/gitlab/gitaly/gitaly_token').strip.dump[1..-2] %>"
+      repositories:
+        storages: # You must have at least a `default` storage path.
+          default:
+            path: /var/opt/gitlab/repo
+            gitaly_address: tcp://RELEASE-NAME-gitaly-0.RELEASE-NAME-gitaly.default:8075
+          
+      
+  configure: |
+    set -e
+    config_dir="/init-config"
+    secret_dir="/init-secrets"
+    
+    for secret in postgres rails-secrets migrations gitaly ; do
+      mkdir -p "${secret_dir}/${secret}"
+      cp -v -r -L "${config_dir}/${secret}/." "${secret_dir}/${secret}/"
+    done
+    for secret in redis minio objectstorage ldap omniauth smtp ; do
+      if [ -e "${config_dir}/${secret}" ]; then
+        mkdir -p "${secret_dir}/${secret}"
+        cp -v -r -L "${config_dir}/${secret}/." "${secret_dir}/${secret}/"
+      fi
+    done
+    
+    
+    
+# Leave this here - This line denotes end of block to the parser.

@@ -1,0 +1,34 @@
+---
+# Source: gitlab/charts/registry/templates/ingress.yaml
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: RELEASE-NAME-registry
+  namespace: default
+  labels:
+    app: registry
+    chart: registry-0.5.0
+    release: RELEASE-NAME
+    heritage: Helm
+    
+  annotations:
+    kubernetes.io/ingress.class: "RELEASE-NAME-nginx"
+    kubernetes.io/ingress.provider: nginx
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "900"
+    nginx.ingress.kubernetes.io/proxy-request-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    certmanager.k8s.io/issuer: "RELEASE-NAME-issuer"
+spec:
+  rules:
+    - host: registry.example.com
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: RELEASE-NAME-registry
+              servicePort: 5000
+  tls:
+    - hosts:
+      - registry.example.com
+      secretName: RELEASE-NAME-registry-tls

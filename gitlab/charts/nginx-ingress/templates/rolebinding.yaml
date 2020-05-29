@@ -1,0 +1,21 @@
+---
+# Source: gitlab/charts/nginx-ingress/templates/rolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: RELEASE-NAME-nginx-ingress
+  namespace: default
+  labels:
+    app: nginx-ingress
+    chart: nginx-ingress-0.30.0-1
+    release: RELEASE-NAME
+    heritage: Helm
+    
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: RELEASE-NAME-nginx-ingress
+subjects:
+  - kind: ServiceAccount
+    name: RELEASE-NAME-nginx-ingress
+    namespace: default

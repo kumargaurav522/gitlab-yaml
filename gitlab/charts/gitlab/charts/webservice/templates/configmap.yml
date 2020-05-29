@@ -1,0 +1,285 @@
+---
+# Source: gitlab/charts/gitlab/charts/webservice/templates/configmap.yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: RELEASE-NAME-webservice
+  namespace: default
+  labels:
+    app: webservice
+    chart: webservice-4.0.1
+    release: RELEASE-NAME
+    heritage: Helm
+    
+data:
+  installation_type: |
+    gitlab-helm-chart
+  database.yml.erb: |
+    production:
+      adapter: postgresql
+      encoding: unicode
+      database: gitlabhq_production
+      username: gitlab
+      password: "<%= File.read("/etc/gitlab/postgres/psql-password").strip.dump[1..-2] %>"
+      host: "RELEASE-NAME-postgresql"
+      port: 5432
+      pool: 10
+      prepared_statements: false
+      # load_balancing:
+      #   hosts:
+      #     - host1.example.com
+      #     - host2.example.com
+      
+  smtp_settings.rb: |
+    
+  resque.yml.erb: |
+    production:
+      url: redis://:<%= URI.escape(File.read("/etc/gitlab/redis/redis-password").strip) %>@RELEASE-NAME-redis-master:6379
+      
+      id:
+  
+  
+  
+  cable.yml.erb: |
+    production:
+      url: redis://:<%= URI.escape(File.read("/etc/gitlab/redis/redis-password").strip) %>@RELEASE-NAME-redis-master:6379
+      
+      id:
+      adapter: redis
+  gitlab.yml.erb: |
+    production: &base
+      gitlab:
+        host: gitlab.example.com
+        https: true
+        max_request_duration_seconds: 57
+        impersonation_enabled: 
+        usage_ping_enabled: true
+        seat_link_enabled: true
+        default_can_create_group: true
+        username_changing_enabled: true
+        issue_closing_pattern: 
+        default_theme: 
+        default_projects_features:
+          issues: true
+          merge_requests: true
+          wiki: true
+          snippets: true
+          builds: true
+          container_registry: true
+        webhook_timeout: 
+        trusted_proxies:
+        time_zone: "UTC"        
+        email_from: "gitlab@example.com"
+        email_display_name: "GitLab"
+        email_reply_to: "noreply@example.com"
+        email_subject_suffix: ""
+      
+      gravatar:
+        plain_url: 
+        ssl_url: 
+      extra:
+        
+        
+        
+      artifacts:
+        enabled: true
+        object_store:
+          enabled: true
+          remote_directory: gitlab-artifacts
+          direct_upload: true
+          background_upload: false
+          proxy_download: true
+          connection:
+            provider: AWS
+            region: us-east-1
+            aws_access_key_id: "<%= File.read('/etc/gitlab/minio/accesskey').strip.dump[1..-2] %>"
+            aws_secret_access_key: "<%= File.read('/etc/gitlab/minio/secretkey').strip.dump[1..-2] %>"
+            host: minio.example.com
+            endpoint: http://RELEASE-NAME-minio-svc:9000
+            path_style: true
+      lfs:
+        enabled: true
+        object_store:
+          enabled: true
+          remote_directory: git-lfs
+          direct_upload: true
+          background_upload: false
+          proxy_download: true
+          connection:
+            provider: AWS
+            region: us-east-1
+            aws_access_key_id: "<%= File.read('/etc/gitlab/minio/accesskey').strip.dump[1..-2] %>"
+            aws_secret_access_key: "<%= File.read('/etc/gitlab/minio/secretkey').strip.dump[1..-2] %>"
+            host: minio.example.com
+            endpoint: http://RELEASE-NAME-minio-svc:9000
+            path_style: true
+      uploads:
+        enabled: true
+        object_store:
+          enabled: true
+          remote_directory: gitlab-uploads
+          direct_upload: true
+          background_upload: false
+          proxy_download: true
+          connection:
+            provider: AWS
+            region: us-east-1
+            aws_access_key_id: "<%= File.read('/etc/gitlab/minio/accesskey').strip.dump[1..-2] %>"
+            aws_secret_access_key: "<%= File.read('/etc/gitlab/minio/secretkey').strip.dump[1..-2] %>"
+            host: minio.example.com
+            endpoint: http://RELEASE-NAME-minio-svc:9000
+            path_style: true
+      packages:
+        enabled: true
+        object_store:
+          enabled: true
+          remote_directory: gitlab-packages
+          direct_upload: true
+          background_upload: false
+          proxy_download: true
+          connection:
+            provider: AWS
+            region: us-east-1
+            aws_access_key_id: "<%= File.read('/etc/gitlab/minio/accesskey').strip.dump[1..-2] %>"
+            aws_secret_access_key: "<%= File.read('/etc/gitlab/minio/secretkey').strip.dump[1..-2] %>"
+            host: minio.example.com
+            endpoint: http://RELEASE-NAME-minio-svc:9000
+            path_style: true
+      external_diffs:
+        enabled: 
+        when: 
+        object_store:
+          enabled: false
+          remote_directory: gitlab-mr-diffs
+          direct_upload: true
+          background_upload: false
+          proxy_download: true
+          connection:
+            provider: AWS
+            region: us-east-1
+            aws_access_key_id: "<%= File.read('/etc/gitlab/minio/accesskey').strip.dump[1..-2] %>"
+            aws_secret_access_key: "<%= File.read('/etc/gitlab/minio/secretkey').strip.dump[1..-2] %>"
+            host: minio.example.com
+            endpoint: http://RELEASE-NAME-minio-svc:9000
+            path_style: true
+      terraform_state:
+        enabled: false
+        object_store:
+          enabled: false
+          remote_directory: gitlab-terraform-state
+          direct_upload: true
+          background_upload: false
+          proxy_download: true
+          connection:
+            provider: AWS
+            region: us-east-1
+            aws_access_key_id: "<%= File.read('/etc/gitlab/minio/accesskey').strip.dump[1..-2] %>"
+            aws_secret_access_key: "<%= File.read('/etc/gitlab/minio/secretkey').strip.dump[1..-2] %>"
+            host: minio.example.com
+            endpoint: http://RELEASE-NAME-minio-svc:9000
+            path_style: true
+      
+      pages:
+        enabled: false
+      mattermost:
+        enabled: false
+      gitlab_ci:
+      ldap:
+        enabled: false
+      
+      omniauth:
+        enabled: false
+        sync_profile_from_provider: []
+        sync_profile_attributes: ["email"]
+        allow_single_sign_on: ["saml"]
+        block_auto_created_users: true
+        auto_link_ldap_user: false
+        auto_link_saml_user: false
+        external_providers: []
+      kerberos:
+        enabled: false
+      shared:
+      gitaly:
+        client_path: /home/git/gitaly/bin
+        token: "<%= File.read('/etc/gitlab/gitaly/gitaly_token').strip.dump[1..-2] %>"
+      repositories:
+        storages: # You must have at least a `default` storage path.
+          default:
+            path: /var/opt/gitlab/repo
+            gitaly_address: tcp://RELEASE-NAME-gitaly-0.RELEASE-NAME-gitaly.default:8075
+          
+      backup:
+        path: "tmp/backups"   # Relative paths are relative to Rails.root (default: tmp/backups/)
+      gitlab_shell:
+        path: /home/git/gitlab-shell/
+        hooks_path: /home/git/gitlab-shell/hooks/
+        upload_pack: true
+        receive_pack: true
+        ssh_port: 22
+        secret_file: /etc/gitlab/shell/.gitlab_shell_secret
+      workhorse:
+        secret_file: /etc/gitlab/gitlab-workhorse/secret
+      git:
+        bin_path: /usr/bin/git
+      webpack:
+      monitoring:
+        ip_whitelist:
+          - 0.0.0.0/0
+        web_exporter:
+          enabled: false
+          address: 0.0.0.0
+          port: 8083
+        sidekiq_exporter:
+      shutdown:
+        blackout_seconds: 10
+      rack_attack:
+        git_basic_auth:
+      ## Registry Integration
+      registry:
+        enabled: true
+        host: registry.example.com
+        api_url: http://RELEASE-NAME-registry:5000
+        key: /etc/gitlab/registry/gitlab-registry.key
+        issuer: gitlab-issuer
+  configure: |
+    set -e
+    config_dir="/init-config"
+    secret_dir="/init-secrets"
+    
+    for secret in shell gitaly registry postgres rails-secrets gitlab-workhorse ; do
+      mkdir -p "${secret_dir}/${secret}"
+      cp -v -r -L "${config_dir}/${secret}/." "${secret_dir}/${secret}/"
+    done
+    for secret in redis minio objectstorage ldap omniauth smtp ; do
+      if [ -e "${config_dir}/${secret}" ]; then
+        mkdir -p "${secret_dir}/${secret}"
+        cp -v -r -L "${config_dir}/${secret}/." "${secret_dir}/${secret}/"
+      fi
+    done
+---
+# Source: gitlab/charts/gitlab/charts/webservice/templates/configmap.yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: RELEASE-NAME-workhorse-config
+  namespace: default
+  labels:
+    app: webservice
+    chart: webservice-4.0.1
+    release: RELEASE-NAME
+    heritage: Helm
+    
+data:
+  installation_type: |
+    gitlab-helm-chart
+  workhorse-config.toml.erb: |
+    [redis]
+    URL = "redis://RELEASE-NAME-redis-master:6379"
+    Password = "<%= File.read("/etc/gitlab/redis/redis-password").strip.dump[1..-2] %>"
+  configure: |
+      set -e
+      mkdir -p /init-secrets-workhorse/gitlab-workhorse
+      cp -v -r -L /init-config/gitlab-workhorse/secret /init-secrets-workhorse/gitlab-workhorse/secret
+      mkdir -p /init-secrets-workhorse/redis
+      cp -v -r -L /init-config/redis/redis-password /init-secrets-workhorse/redis/
+# Leave this here - This line denotes end of block to the parser.

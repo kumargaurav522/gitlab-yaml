@@ -1,0 +1,25 @@
+---
+# Source: gitlab/charts/gitlab/charts/gitlab-shell/templates/hpa.yaml
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: RELEASE-NAME-gitlab-shell
+  namespace: default
+  labels:
+    app: gitlab-shell
+    chart: gitlab-shell-4.0.1
+    release: RELEASE-NAME
+    heritage: Helm
+    
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: RELEASE-NAME-gitlab-shell
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      targetAverageValue: 100m

@@ -1,0 +1,25 @@
+---
+# Source: gitlab/charts/gitlab/charts/webservice/templates/hpa.yaml
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: RELEASE-NAME-webservice
+  namespace: default
+  labels:
+    app: webservice
+    chart: webservice-4.0.1
+    release: RELEASE-NAME
+    heritage: Helm
+    
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: RELEASE-NAME-webservice
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      targetAverageValue: 1

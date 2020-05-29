@@ -1,0 +1,146 @@
+---
+# Source: gitlab/charts/gitlab/charts/gitlab-shell/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: RELEASE-NAME-gitlab-shell
+  namespace: default
+  labels:
+    app: gitlab-shell
+    chart: gitlab-shell-4.0.1
+    release: RELEASE-NAME
+    heritage: Helm
+    
+spec:
+  selector:
+    matchLabels:
+      app: gitlab-shell
+      release: RELEASE-NAME
+  template:
+    metadata:
+      labels:
+        app: gitlab-shell
+        release: RELEASE-NAME
+      annotations:
+        checksum/config: 1431d232388ff7f1138ab524d1dd0436472a5e822a7886a3dcf01f0e160e861d
+        checksum/config-sshd: f947d95d78fbd52882a2aed01658dba53a954f450359b9d35f9bcecbaf3dbac2
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+    spec:
+      initContainers:
+        
+        
+        - name: certificates
+          image: "registry.gitlab.com/gitlab-org/build/cng/alpine-certificates:20171114-r3"
+          
+          volumeMounts:
+          - name: etc-ssl-certs
+            mountPath: /etc/ssl/certs
+            readOnly: false
+          resources:
+            requests:
+              cpu: 50m
+        - name: configure
+          command: ['sh', '/config/configure']
+          image: "busybox:latest"
+          volumeMounts:
+          
+          - name: shell-config
+            mountPath: /config
+            readOnly: true
+          - name: shell-init-secrets
+            mountPath: /init-config
+            readOnly: true
+          - name: shell-secrets
+            mountPath: /init-secrets
+            readOnly: false
+          resources:
+            requests:
+              cpu: 50m
+      securityContext:
+        runAsUser: 1000
+        fsGroup: 1000      
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            podAffinityTerm:
+              topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  app: gitlab-shell
+                  release: RELEASE-NAME
+      containers:
+        
+        - name: gitlab-shell
+          image: "registry.gitlab.com/gitlab-org/build/cng/gitlab-shell:v13.2.0"
+          
+          ports:
+            - containerPort: 2222
+              name: ssh
+          env:
+            - name: GITALY_FEATURE_DEFAULT_ON
+              value: "1"
+            - name: CONFIG_TEMPLATE_DIRECTORY
+              value: '/etc/gitlab-shell'
+            - name: CONFIG_DIRECTORY
+              value: '/srv/gitlab-shell'
+            - name: KEYS_DIRECTORY
+              value: '/etc/gitlab-secrets/ssh'
+          volumeMounts:
+            - name: shell-config
+              mountPath: '/etc/gitlab-shell'
+            - name: shell-secrets
+              mountPath: '/etc/gitlab-secrets'
+              readOnly: true
+            - name: sshd-config
+              mountPath: /etc/ssh/sshd_config
+              subPath: sshd_config
+              readOnly: true
+            
+            - name: etc-ssl-certs
+              mountPath: /etc/ssl/certs/
+              readOnly: true
+          livenessProbe:
+            exec:
+              command:
+              - /scripts/healthcheck
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 3
+          # readinessProbe:
+          #   httpGet:
+          #     path: /
+          #     port: 2222
+          resources:
+            requests:
+              cpu: 0
+              memory: 6M
+      volumes:
+      
+      - name: shell-config
+        configMap:
+          name: RELEASE-NAME-gitlab-shell
+      - name: sshd-config
+        configMap:
+          name: RELEASE-NAME-gitlab-shell-sshd
+      - name: shell-init-secrets
+        projected:
+          defaultMode: 0440
+          sources:
+            - secret:
+                name: "RELEASE-NAME-gitlab-shell-host-keys"
+            - secret:
+                name: "RELEASE-NAME-gitlab-shell-secret"
+                items:
+                  - key: "secret"
+                    path: shell/.gitlab_shell_secret
+      # Actual config dirs that will be used in the container
+      - name: shell-secrets
+        emptyDir:
+          medium: "Memory"
+      
+      - name: etc-ssl-certs
+        emptyDir:
+          medium: "Memory"

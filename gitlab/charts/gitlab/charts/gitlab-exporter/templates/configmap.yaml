@@ -1,0 +1,78 @@
+---
+# Source: gitlab/charts/gitlab/charts/gitlab-exporter/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: RELEASE-NAME-gitlab-exporter
+  namespace: default
+  labels:
+    app: gitlab-exporter
+    chart: gitlab-exporter-4.0.1
+    release: RELEASE-NAME
+    heritage: Helm
+    
+data:
+  gitlab-exporter.yml.erb: |
+    server:
+      listen_address: 0.0.0.0
+      listen_port: 9168
+
+    probes:
+      db_common: &db_common
+        methods:
+          - probe_db
+        opts:
+          connection_string: dbname=gitlabhq_production user=gitlab host=RELEASE-NAME-postgresql port=5432 password='<%= File.read("/etc/gitlab/postgres/psql-password").strip.gsub(/[\'\\]/) { |esc| '\\' + esc } %>'
+      database:
+        multiple: true
+        ci_builds:
+          class_name: Database::CiBuildsProber
+          <<: *db_common
+        tuple_stats:
+          class_name: Database::TuplesProber
+          <<: *db_common
+        rows_count:
+          class_name: Database::RowCountProber
+          <<: *db_common
+
+      sidekiq: &sidekiq
+        methods:
+          - probe_queues
+          - probe_workers
+          - probe_retries
+          - probe_stats
+        opts:
+          redis_url: redis://:<%= URI.escape(File.read("/etc/gitlab/redis/redis-password").strip) %>@RELEASE-NAME-redis-master:6379
+          redis_enable_client: false
+
+      metrics:
+        multiple: true
+        sidekiq:
+          <<: *sidekiq
+        ci_builds:
+          class_name: Database::CiBuildsProber
+          <<: *db_common
+        tuple_stats:
+          class_name: Database::TuplesProber
+          <<: *db_common
+        rows_count:
+          class_name: Database::RowCountProber
+          <<: *db_common
+
+  configure: |
+    set -e
+    config_dir="/init-config"
+    secret_dir="/init-secrets"
+    
+    for secret in postgres ; do
+      mkdir -p "${secret_dir}/${secret}"
+      cp -v -r -L "${config_dir}/${secret}/." "${secret_dir}/${secret}/"
+    done
+    for secret in redis ; do
+      if [ -e "${config_dir}/${secret}" ]; then
+        mkdir -p "${secret_dir}/${secret}"
+        cp -v -r -L "${config_dir}/${secret}/." "${secret_dir}/${secret}/"
+      fi
+    done
+    
+# Leave this here - This line denotes end of block to the parser.

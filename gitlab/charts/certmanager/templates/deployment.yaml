@@ -1,0 +1,56 @@
+---
+# Source: gitlab/charts/certmanager/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: RELEASE-NAME-cert-manager
+  namespace: "default"
+  labels:
+    app: cert-manager
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/instance:  RELEASE-NAME
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: certmanager-v0.10.1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cert-manager
+      app.kubernetes.io/name: cert-manager
+      app.kubernetes.io/instance:  RELEASE-NAME
+      app.kubernetes.io/managed-by: Helm
+  template:
+    metadata:
+      labels:
+        app: cert-manager
+        app.kubernetes.io/name: cert-manager
+        app.kubernetes.io/instance:  RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        helm.sh/chart: certmanager-v0.10.1
+      annotations:
+        prometheus.io/path: "/metrics"
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9402'
+    spec:
+      serviceAccountName: RELEASE-NAME-cert-manager
+      containers:
+        - name: certmanager
+          image: "quay.io/jetstack/cert-manager-controller:v0.10.1"
+          imagePullPolicy: IfNotPresent
+          args:
+          - --v=2
+          - --cluster-resource-namespace=$(POD_NAMESPACE)
+          - --leader-election-namespace=$(POD_NAMESPACE)
+          - --webhook-namespace=$(POD_NAMESPACE)
+          - --webhook-ca-secret=RELEASE-NAME-cert-manager-webhook-ca
+          - --webhook-serving-secret=RELEASE-NAME-cert-manager-webhook-tls
+          - --webhook-dns-names=RELEASE-NAME-cert-manager-webhook,RELEASE-NAME-cert-manager-webhook.default,RELEASE-NAME-cert-manager-webhook.default.svc
+          ports:
+          - containerPort: 9402
+          env:
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          resources:
+            {}

@@ -1,0 +1,147 @@
+---
+# Source: gitlab/charts/gitlab/charts/gitlab-exporter/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: RELEASE-NAME-gitlab-exporter
+  namespace: default
+  labels:
+    app: gitlab-exporter
+    chart: gitlab-exporter-4.0.1
+    release: RELEASE-NAME
+    heritage: Helm
+    
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gitlab-exporter
+      release: RELEASE-NAME
+  template:
+    metadata:
+      labels:
+        app: gitlab-exporter
+        release: RELEASE-NAME
+      annotations:
+        checksum/config: 786ffc5b538b15a6adbdf572c526aad4fc2b3facee2f9b0481cfc3565a79701f
+        prometheus.io/path: /metrics
+        prometheus.io/port: "9168"
+        prometheus.io/scrape: "true"
+    spec:
+      securityContext:
+        runAsUser: 1000
+        fsGroup: 1000
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            podAffinityTerm:
+              topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  app: gitlab-exporter
+                  release: RELEASE-NAME
+      initContainers:
+        
+        
+        - name: certificates
+          image: "registry.gitlab.com/gitlab-org/build/cng/alpine-certificates:20171114-r3"
+          
+          volumeMounts:
+          - name: etc-ssl-certs
+            mountPath: /etc/ssl/certs
+            readOnly: false
+          resources:
+            requests:
+              cpu: 50m
+        - name: configure
+          command: ['sh', '/config/configure']
+          image: "busybox:latest"
+          volumeMounts:
+          
+          
+          - name: gitlab-exporter-config
+            mountPath: /config
+            readOnly: true
+          - name: init-gitlab-exporter-secrets
+            mountPath: /init-config
+            readOnly: true
+          - name: gitlab-exporter-secrets
+            mountPath: /init-secrets
+            readOnly: false
+          resources:
+            requests:
+              cpu: 50m
+      
+      containers:
+        
+        - name: gitlab-exporter
+          image: "registry.gitlab.com/gitlab-org/build/cng/gitlab-exporter:7.0.3"
+          
+          env:
+            - name: CONFIG_TEMPLATE_DIRECTORY
+              value: '/var/opt/gitlab-exporter/templates'
+            - name: CONFIG_DIRECTORY
+              value: '/etc/gitlab-exporter'
+          ports:
+          - containerPort: 9168
+            name: gitlab-exporter
+          volumeMounts:
+            - name: gitlab-exporter-config
+              mountPath: /var/opt/gitlab-exporter/templates/gitlab-exporter.yml.erb
+              subPath: gitlab-exporter.yml.erb
+            - name: gitlab-exporter-secrets
+              mountPath: '/etc/gitlab'
+              readOnly: true
+            
+            - name: etc-ssl-certs
+              mountPath: /etc/ssl/certs/
+              readOnly: true
+          livenessProbe:
+            exec:
+              command:
+                - pgrep
+                - -f
+                - gitlab-exporter
+          readinessProbe:
+            exec:
+              command:
+                - pgrep
+                - -f
+                - gitlab-exporter
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/bash", "-c", "pkill -f 'gitlab-exporter'"]
+          resources:
+            requests:
+              cpu: 75m
+              memory: 100M
+      volumes:
+      
+      
+      - name: gitlab-exporter-config
+        configMap:
+          name: RELEASE-NAME-gitlab-exporter
+      - name: init-gitlab-exporter-secrets
+        projected:
+          defaultMode: 0400
+          sources:
+          - secret:
+              name: "RELEASE-NAME-postgresql-password"
+              items:
+                - key: "postgresql-password"
+                  path: postgres/psql-password
+          
+          - secret:
+              name: "RELEASE-NAME-redis-secret"
+              items:
+                - key: "secret"
+                  path: redis/redis-password
+      - name: gitlab-exporter-secrets
+        emptyDir:
+          medium: "Memory"
+      
+      - name: etc-ssl-certs
+        emptyDir:
+          medium: "Memory"

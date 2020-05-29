@@ -1,0 +1,19 @@
+---
+# Source: gitlab/charts/registry/templates/pdb.yaml
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: RELEASE-NAME-registry-v1
+  namespace: default
+  labels:
+    app: registry
+    chart: registry-0.5.0
+    release: RELEASE-NAME
+    heritage: Helm
+    
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: registry
+      release: RELEASE-NAME
